@@ -1,7 +1,8 @@
 import mongoose , { Schema, Document, Types } from 'mongoose';
 
 interface ColorVariant {
-    color: string;
+    _id?: any;
+    color: string | Types.ObjectId
     amount: number;
     priceCost: number;
     priceSell: number;
@@ -35,7 +36,10 @@ const ProductSchema = new Schema<Product>(
             public_id: { type: String, required: true}
         }
     },
-    { timestamps: true }
+    { timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true }
+     }
 );
 
 ProductSchema.virtual('totalProfit').get(function(){
