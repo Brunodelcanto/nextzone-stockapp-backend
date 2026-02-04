@@ -48,7 +48,126 @@ const getProducts = async (req: Request, res: Response) => {
     }
 }
 
+const deleteProduct = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const product = await Product.findByIdAndDelete(id);
+
+        if(!product) {
+            return res.status(400).json({
+                message: 'Product not found',
+                error: true,
+            })
+        }
+
+        return res.status(200).json({
+            message: 'Product deleted successfully',
+            data: product,
+            error: false
+        })
+
+    } catch (error: any) {
+        return res.status(400).json({
+            error: error.message
+        })
+    }
+}
+
+const updateProduct = async (req: Request, res: Response) => {
+    try {
+        const { name, category, minStockAlert, image } = req.body;
+        const  id  = req.params.id as string;
+
+        const existingProduct = await Product.findOne ({
+            name: { $regex: new RegExp(`^${name}$`, 'i')},
+            _id: { $ne: id }
+        })
+
+        if (existingProduct) {
+            return res.status(400).json({
+                message: 'Product with this name already exists',
+                error: true
+            })
+        }
+
+        const product = await Product.findByIdAndUpdate(
+            id,
+            {
+                name, category, minStockAlert, image
+            },
+            { new: true }
+        )
+           return res.status(200).json({
+            message: 'Product updated successfully',
+            data: product,
+            error: false
+        })
+    } catch (error: any) {
+        return res.status(400).json({
+            error: error.message
+        })
+    }
+}
+
+const deactivateProduct = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const product = await Product.findByIdAndUpdate(
+            id,
+            {
+                isActive: false
+            },
+            {new: true}
+        )
+        if (!product) {
+            return res.status(404).json({
+                message: 'Product not found',
+                error: true,
+            })
+        }
+        return res.status(200).json({
+            message: 'Product deactivated successfully',
+            error: false
+        })
+    } catch (error: any) {
+        return res.status(400).json({
+            error: error.message
+        })
+    }
+}
+
+const activateProduct = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const product = await Product.findByIdAndUpdate(
+            id,
+            {
+                isActive: true
+            },
+            {new: true}
+        )
+        if (!product) {
+            return res.status(404).json({
+                message: 'Product not found',
+                error: true,
+            })
+        }
+        return res.status(200).json({
+            message: 'Product activated successfully',
+            error: false
+        })
+    } catch (error: any) {
+        return res.status(400).json({
+            error: error.message
+        })
+    }
+}
+
 export {
     createProducts,
-    getProducts
+    getProducts,
+    deleteProduct,
+    updateProduct,
+    deactivateProduct,
+    activateProduct
 }
