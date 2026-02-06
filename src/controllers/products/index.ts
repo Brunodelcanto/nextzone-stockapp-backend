@@ -163,11 +163,42 @@ const activateProduct = async (req: Request, res: Response) => {
     }
 }
 
+const updateVariantStock = async (req: Request, res: Response) => {
+    try {
+        const  id = req.params.id as string;
+        const { color, quantity } = req.body;
+
+        const updateProduct = await Product.findOneAndUpdate(
+            {_id: id, 'variants.color': color},
+            { $inc: { 'variants.$.amount': quantity } },
+            { new: true }
+        ).populate('category', 'name');
+
+        if (!updateProduct) {
+            return res.status(404).json({
+                message: 'Product or variant not found',
+                error: true,
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Variant stock updated successfully',
+            data: updateProduct,
+            error: false,
+        });
+    } catch (error: any) {
+        return res.status(400).json({
+            error: error.message
+        })
+    }
+}
+
 export {
     createProducts,
     getProducts,
     deleteProduct,
     updateProduct,
     deactivateProduct,
-    activateProduct
+    activateProduct,
+    updateVariantStock
 }

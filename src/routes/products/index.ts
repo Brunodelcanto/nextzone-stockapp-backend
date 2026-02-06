@@ -6,7 +6,8 @@ import {
     deleteProduct,
     updateProduct,
     deactivateProduct,
-    activateProduct
+    activateProduct,
+    updateVariantStock
 } from '../../controllers/products/index.js';
 
 const router = express.Router();
@@ -17,5 +18,6 @@ router.delete('/:id', deleteProduct);
 router.put('/:id', updateProduct);
 router.patch('/deactivate/:id', deactivateProduct);
 router.patch('/activate/:id', activateProduct);
+router.patch('/stock/:id', updateVariantStock);
 
 export default router;
