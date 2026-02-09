@@ -23,7 +23,7 @@ const ProductSchema = new Schema<Product>(
         category: { type: Schema.Types.ObjectId, ref: 'Category', required: true},
         variants: [
             {
-                color: { type: String, required: true},
+                color: { type: Schema.Types.ObjectId, ref: 'Color', required: true},
                 amount: { type: Number, required: true, min: 0},
                 priceCost: { type: Number, required: true},
                 priceSell: { type: Number, required: true}

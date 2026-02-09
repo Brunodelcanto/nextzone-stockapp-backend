@@ -1,12 +1,27 @@
 import type { Request, Response } from "express"; 
 import Product from "../../models/product.js";
 
-const createProducts = async (req: Request, res: Response) => {
-    try {
-        const { name } = req.body;
+interface MulterRequest extends Request {
+    file?: any;
+}
 
-        const existingProduct = await Product.findOne ({
-            name: { $regex: new RegExp(`^${name}$`, 'i')}
+const createProducts = async (req: MulterRequest, res: Response) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                message: 'Image is required',
+                error: true,
+            });
+        }
+
+        if (typeof req.body.variants === 'string') {
+            req.body.variants = JSON.parse(req.body.variants);
+        }
+
+        const { name, category, variants, minStockAlert } = req.body;
+
+        const existingProduct = await Product.findOne({
+            name: { $regex: new RegExp(`^${name}$`, 'i') }
         });
 
         if (existingProduct) {
@@ -15,8 +30,17 @@ const createProducts = async (req: Request, res: Response) => {
                 error: true,
             });
         }
+        const product = new Product({
+            name,
+            category,
+            minStockAlert,
+            variants: typeof variants === 'string' ? JSON.parse(variants) : variants,
+            image: {
+                url: (req.file as any).path,
+                public_id: (req.file as any).filename
+            }
+        });
 
-        const product = new Product(req.body);
         await product.save();
 
         return res.status(201).json({
@@ -24,7 +48,7 @@ const createProducts = async (req: Request, res: Response) => {
             data: product,
             error: false,
         });
-        
+
     } catch (error: any) {
         return res.status(400).json({
             error: error.message
@@ -34,7 +58,9 @@ const createProducts = async (req: Request, res: Response) => {
 
 const getProducts = async (req: Request, res: Response) => {
     try {
-        const products = await Product.find().populate('category', 'name');
+        const products = await Product.find()
+            .populate('category', 'name')
+            .populate('variants.color');
 
         return res.status(200).json({
             message: 'Products retrieved successfully',
@@ -47,6 +73,34 @@ const getProducts = async (req: Request, res: Response) => {
         });
     }
 }
+
+const getProductById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const product = await Product.findById(id)
+            .populate('category', 'name')
+             .populate('variants.color');  
+
+        if (!product) {
+            return res.status(404).json({
+                message: 'Product not found',
+                error: true
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Product retrieved successfully',
+            data: product,
+            error: false
+        });
+    } catch (error: any) {
+        return res.status(500).json({
+            message: 'Error retrieving product',
+            error: error.message
+        });
+    }
+};
 
 const deleteProduct = async (req: Request, res: Response) => {
     try {
@@ -75,39 +129,64 @@ const deleteProduct = async (req: Request, res: Response) => {
 
 const updateProduct = async (req: Request, res: Response) => {
     try {
-        const { name, category, minStockAlert, image } = req.body;
-        const  id  = req.params.id as string;
+        const id = req.params.id as string;
+        const { name, category, minStockAlert, variants } = req.body;
 
-        const existingProduct = await Product.findOne ({
-            name: { $regex: new RegExp(`^${name}$`, 'i')},
-            _id: { $ne: id }
-        })
+        const existingProduct = await Product.findOne({
+            name: { $regex: new RegExp(`^${name}$`, 'i') },
+            _id: { $ne: id } 
+        });
 
         if (existingProduct) {
             return res.status(400).json({
                 message: 'Product with this name already exists',
                 error: true
-            })
+            });
+        }
+        const updateData: any = {
+            name,
+            category,
+            minStockAlert,
+        };
+
+        if (variants) {
+            updateData.variants = typeof variants === 'string' ? JSON.parse(variants) : variants;
+        }
+
+
+        if (req.file) {
+            updateData.image = {
+                url: (req.file as any).path,
+                public_id: (req.file as any).filename
+            };
         }
 
         const product = await Product.findByIdAndUpdate(
             id,
-            {
-                name, category, minStockAlert, image
-            },
-            { new: true }
-        )
-           return res.status(200).json({
+            { $set: updateData },
+            { new: true, runValidators: true }
+        ).populate('category', 'name');
+
+        if (!product) {
+            return res.status(404).json({
+                message: 'Product not found',
+                error: true
+            });
+        }
+
+        return res.status(200).json({
             message: 'Product updated successfully',
             data: product,
             error: false
-        })
+        });
+
     } catch (error: any) {
         return res.status(400).json({
+            message: 'Error updating product',
             error: error.message
-        })
+        });
     }
-}
+};
 
 const deactivateProduct = async (req: Request, res: Response) => {
     try {
@@ -172,7 +251,8 @@ const updateVariantStock = async (req: Request, res: Response) => {
             {_id: id, 'variants.color': color},
             { $inc: { 'variants.$.amount': quantity } },
             { new: true }
-        ).populate('category', 'name');
+        ).populate('category', 'name')
+        .populate('variants.color');
 
         if (!updateProduct) {
             return res.status(404).json({
@@ -193,9 +273,29 @@ const updateVariantStock = async (req: Request, res: Response) => {
     }
 }
 
+const searchProductsByNameAndCategory = async (req: Request, res: Response) => {
+    const name = (req.query.name as string) || '';
+    try {
+        const products = await Product.find({
+            name: { $regex: name, $options: "i"}
+        }).populate('category', 'name');
+
+        res.status(200).json({
+            message: "Products obtained successfully",
+            data: products,
+            error: false,
+        });
+    } catch (error: any) {
+        res.status(400).json({
+            error: error.message,
+        })
+    }
+}
+
 export {
     createProducts,
     getProducts,
+    getProductById,
     deleteProduct,
     updateProduct,
     deactivateProduct,
