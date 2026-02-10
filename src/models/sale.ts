@@ -6,11 +6,13 @@ interface ISaleItem {
     name: string;
     quantity: number;
     priceAtSale: number;
+    priceCostAtSale: number;
 }
 
 interface ISale extends Document {
     items: ISaleItem[];
     totalAmount: number;
+    totalProfit?: number;
     comment?: string;
     createdAt: Date;
 }
@@ -21,9 +23,11 @@ const SaleSchema = new Schema<ISale>({
         variantId: { type: Schema.Types.ObjectId, required: true },
         name: { type: String, required: true },
         quantity: { type: Number, required: true, min: 1},
-        priceAtSale: { type: Number, required: true, min: 0 }
+        priceAtSale: { type: Number, required: true, min: 0 },
+        priceCostAtSale: { type: Number, required: true, min: 0 },
     }],
     totalAmount: { type: Number, required: true},
+    totalProfit: { type: Number, required: false, default: 0 },
     comment: { type: String},
 }, {timestamps: true})
 

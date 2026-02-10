@@ -155,9 +155,10 @@ const updateProduct = async (req: Request, res: Response) => {
 
 
         if (req.file) {
+            console.log("Archivo recibido:", req.file); 
             updateData.image = {
-                url: (req.file as any).path,
-                public_id: (req.file as any).filename
+                url: (req.file as any).path || (req.file as any).secure_url, 
+                public_id: (req.file as any).filename || (req.file as any).public_id
             };
         }
 
@@ -165,7 +166,7 @@ const updateProduct = async (req: Request, res: Response) => {
             id,
             { $set: updateData },
             { new: true, runValidators: true }
-        ).populate('category', 'name');
+        ).populate('category', 'name').populate('variants.color');
 
         if (!product) {
             return res.status(404).json({

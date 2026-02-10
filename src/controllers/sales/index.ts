@@ -6,13 +6,14 @@ const createSale = async (req: Request, res: Response) => {
     try {
         const { items, comment } = req.body;
         let totalAmount = 0;
+        let totalProfit = 0; 
         const processedItems = [];
 
         for (const item of items) {
             const product = await Product.findById(item.productId);
 
             if(!product) {
-                return res.status(404).json({ message: `Producto con ID ${item.productId} no encontrado`})
+                return res.status(404).json({ message: `Producto con ID ${item.productId} no encontrado` })
             }
 
             const variant = product.variants.find(v => v._id.toString() === item.variantId);
@@ -28,26 +29,29 @@ const createSale = async (req: Request, res: Response) => {
             }
 
             const subtotal = variant.priceSell * item.quantity;
+            const subtotalCost = variant.priceCost * item.quantity; 
+            
             totalAmount += subtotal;
+            totalProfit += (subtotal - subtotalCost); 
 
             processedItems.push({
                 productId: item.productId,
                 variantId: item.variantId,
                 name: product.name,
                 quantity: item.quantity,
-                priceAtSale: variant.priceSell
+                priceAtSale: variant.priceSell,
+                priceCostAtSale: variant.priceCost 
             });
 
             await Product.findOneAndUpdate(
                 {_id: item.productId, 'variants._id': item.variantId},
                 { $inc: {'variants.$.amount': -item.quantity}}
             );
-
         }
-
         const newSale = new Sale({
             items: processedItems,
             totalAmount,
+            totalProfit,
             comment
         });
 
@@ -85,23 +89,28 @@ const getSales = async (req: Request, res: Response) => {
             .sort({ createdAt: -1 })
             .lean();
 
-        if (!Array.isArray(sales)) {
+        if (!Array.isArray(sales) || sales.length === 0) {
             return res.status(200).json({
                 message: "No sales found or the format is incorrect",
                 totalRevenue: 0,
+                totalProfit: 0,
                 data: [],
                 error: false
             });
         }
 
-        const totalRevenue = sales.reduce((acc, sale) => {
-            return acc + (sale.totalAmount || 0);
-        }, 0);
+        const totals = sales.reduce((acc, sale) => {
+            return {
+                revenue: acc.revenue + (sale.totalAmount || 0),
+                profit: acc.profit + (sale.totalProfit || 0) 
+            };
+        }, { revenue: 0, profit: 0 });
 
         return res.status(200).json({
             message: "Report generated successfully",
             count: sales.length,
-            totalRevenue,
+            totalRevenue: totals.revenue,
+            totalProfit: totals.profit,
             data: sales,
             error: false
         });

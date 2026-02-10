@@ -73,6 +73,14 @@ const deleteColor = async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string;
 
+        const productsWithColor = await Product.find({ "variants.color": id });
+
+        if (productsWithColor.length > 0) {
+            return res.status(400).json({
+                message: "Cannot delete this color because it is associated with products",
+                error: true,
+            });
+        }
         const color = await Color.findByIdAndDelete(id);
 
         if (!color) {
