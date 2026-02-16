@@ -5,14 +5,22 @@ import bcrypt from 'bcrypt';
 
 const createToken = (id: string) => {
     return jwt.sign({ id }, process.env.JWT_SECRET || 'secret_key', {
-        expiresIn: '8h'
+        expiresIn: '2h'
+    });
+};
+
+const sendTokenCookie = (res: Response, token: string) => {
+    res.cookie('jwt', token, {
+        httpOnly: true,
+        secure: false, 
+        sameSite: 'lax', 
+        maxAge: 2 * 60 * 60 * 1000 
     });
 };
 
 const registerUser = async (req: Request, res: Response) => {
     try {
         const { name, email, password } = req.body;
-
         const userExists = await User.findOne({ email });
         if (userExists) return res.status(400).json({ message: 'User already exists' })
 
@@ -24,6 +32,8 @@ const registerUser = async (req: Request, res: Response) => {
         });
 
         const token = createToken(user._id.toString());
+
+        sendTokenCookie(res, token);
 
         res.status(201).json({
             message: 'User registered successfully',
@@ -41,16 +51,17 @@ const loginUser = async (req: Request, res: Response) => {
 
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ message: 'User not found' });
+            return res.status(400).json({ message: 'Credentials invalid' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
-            return res.status(401).json({ message: 'Email or password is incorrect' });
+            return res.status(401).json({ message: 'Credentials invalid' });
         }
 
         const token = createToken(user._id.toString());
+        sendTokenCookie(res, token);
 
         res.status(200).json({
             message: 'Login successful',
@@ -63,4 +74,12 @@ const loginUser = async (req: Request, res: Response) => {
     }
 }
 
-export { registerUser, loginUser };
+const logoutUser = (req: Request, res: Response) => {
+    res.cookie('jwt', 'loggedout', {
+        expires: new Date(Date.now() + 10 * 1000),
+        httpOnly: true
+    });
+    res.status(200).json({ message: 'Sesión cerrada' });
+};
+
+export { registerUser, loginUser, logoutUser };
