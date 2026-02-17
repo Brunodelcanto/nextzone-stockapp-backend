@@ -162,7 +162,6 @@ const updateProduct = async (req: Request, res: Response) => {
 
 
         if (req.file) {
-            console.log("Archivo recibido:", req.file); 
             updateData.image = {
                 url: (req.file as any).path || (req.file as any).secure_url, 
                 public_id: (req.file as any).filename || (req.file as any).public_id
