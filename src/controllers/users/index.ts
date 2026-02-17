@@ -12,8 +12,8 @@ const createToken = (id: string) => {
 const sendTokenCookie = (res: Response, token: string) => {
     res.cookie('jwt', token, {
         httpOnly: true,
-        secure: false, 
-        sameSite: 'lax', 
+        secure: true, 
+        sameSite: 'none', 
         maxAge: 2 * 60 * 60 * 1000 
     });
 };
@@ -75,9 +75,11 @@ const loginUser = async (req: Request, res: Response) => {
 }
 
 const logoutUser = (req: Request, res: Response) => {
-    res.cookie('jwt', 'loggedout', {
-        expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: true
+    res.cookie('jwt', '', {
+        expires: new Date(0),
+        httpOnly: true,
+        secure: true, 
+        sameSite: 'none'
     });
     res.status(200).json({ message: 'Sesión cerrada' });
 };
