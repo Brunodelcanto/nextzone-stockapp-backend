@@ -1,5 +1,6 @@
 import type { Request, Response } from "express"; 
-import Product from "../../models/product.js";
+import Product from "../../models/product.js"
+import {cloudinary } from "../../config/cloudinary.js";
 
 interface MulterRequest extends Request {
     file?: any;
@@ -105,7 +106,7 @@ const getProductById = async (req: Request, res: Response) => {
 const deleteProduct = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const product = await Product.findByIdAndDelete(id);
+        const product = await Product.findById(id);
 
         if(!product) {
             return res.status(400).json({
@@ -113,6 +114,12 @@ const deleteProduct = async (req: Request, res: Response) => {
                 error: true,
             })
         }
+
+        if (product.image?.public_id) {
+            await cloudinary.uploader.destroy(product.image.public_id);
+        }
+
+        await Product.findByIdAndDelete(id);
 
         return res.status(200).json({
             message: 'Product deleted successfully',

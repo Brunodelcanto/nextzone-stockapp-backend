@@ -4,10 +4,20 @@ import routes from './routes/index.js';
 import "dotenv/config";
 import connectDB from './database.js'
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "img-src": ["'self'", "data:", "res.cloudinary.com"], 
+    },
+  },
+}));
 
 app.use(cors({
     origin: "http://localhost:5173", 
